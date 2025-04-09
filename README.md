@@ -1,18 +1,22 @@
-# Projet-C2
+# Projet C2 – Agent de Command & Control
 
+## 🎯 Objectif  
+Développer un agent capable de communiquer avec un serveur Command & Control (C2) pour l’exécution de commandes à distance.
 
-## Objectif 
-Développer un Agent qui peut communiquer avec notre serveur C2
+## 📅 Planification  
 
-## Planification 
+### ✅ Étapes réalisées :  
+- **Connexion établie** entre l’agent et le serveur C2  
+- **Protocole CSV** implémenté pour l’échange de données  
+- **Commandes de base disponibles :**
+  - `locate` : récupère la géolocalisation ou des informations de position (à adapter selon le contexte)
+  - `sleep` : met en pause l’exécution de l’agent pendant un certain temps
+  - `execve` : exécute une commande système via un appel système
 
-	- Step 1 : 
-		Établir la connexion entre les deux instances 
-	- Step 2 :
-		Mettre en place le protocole CSV		
-	- Step 3 : 
-		Implémenter les commandes de bases
-	- Step 4 : 
-		Implémenter les commandes plus complexes 
+### 🛠️ Étapes à venir :
+- Implémentation de commandes avancées (ex. : revshell, keylogger, etc.)
+- Amélioration de la robustesse et de la sécurité de la communication C2
 
-
+## 🚧 À propos  
+Ce projet est en cours de développement dans le cadre d'un exercice de cybersécurité.  
+Il vise à explorer les techniques de gestion d'agents distants en environnement contrôlé.
