@@ -145,11 +145,6 @@ void task_revshell() {
     return;
 }
 
-void task_keylog() {
-    printf("Exécution de la tâche keylog\n");
-    // Implémentation à faire
-    return;
-}
 
 void task_persist() {
     printf("Exécution de la tâche persist\n");
@@ -181,8 +176,3 @@ void task_ps() {
     return;
 }
 
-void task_netstat() {
-    printf("Exécution de la tâche netstat\n");
-    // Implémentation à faire
-    return;
-}
