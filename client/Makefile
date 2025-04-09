@@ -1,5 +1,7 @@
 CC = gcc
 CFLAGS = -Wall -Wextra -pedantic -std=c99
+LDFLAGS = -lcurl
+
 
 BUILD_DIR = build
 SRCS = main.c client.c tasks.c base64.c network.c
@@ -11,7 +13,7 @@ TARGET = client
 all: $(TARGET)
 
 $(TARGET): $(OBJS)
-	$(CC) $(CFLAGS) -o $@ $^
+	$(CC) $(CFLAGS) $(OBJS) -o $@ $(LDFLAGS)
 
 $(BUILD_DIR)/%.o: %.c | $(BUILD_DIR)
 	$(CC) $(CFLAGS) -c $< -o $@

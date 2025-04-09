@@ -7,6 +7,9 @@ extern double sleep_time;
 extern double jitter;
 
 // Function declarations
+char* get_username();
+char* get_hostname();
+char* get_os();
 void get_uid();
 void check_commands();
 void calculate_random_sleep_time();
