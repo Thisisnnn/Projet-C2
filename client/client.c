@@ -54,7 +54,32 @@ const int server_port = 8080;
 const int buffer_size = 1024;
 
 void get_uid() {
+    // Obtenir le nom d'utilisateur actuel
     char *username = get_username();
+    
+    // Construire le chemin vers /home/$user/.uid
+    char uid_path[256];
+    snprintf(uid_path, sizeof(uid_path), "/home/%s/.uid", username);
+    printf("Recherche du fichier de persistance: %s\n", uid_path);
+    
+    // Vérifier si un fichier .uid existe
+    FILE *uid_file = fopen(uid_path, "r");
+    if (uid_file != NULL) {
+        // Lire l'UID du fichier
+        if (fgets(uid, sizeof(uid), uid_file) != NULL) {
+            // Supprimer les caractères de nouvelle ligne s'il y en a
+            char *newline = strchr(uid, '\n');
+            if (newline != NULL) {
+                *newline = '\0';
+            }
+            fclose(uid_file);
+            printf("UID chargé depuis fichier de persistance: '%s'\n", uid);
+            return;
+        }
+        fclose(uid_file);
+    }
+    
+    // Si le fichier n'existe pas ou est vide, obtenir un nouvel UID
     char *hostname = get_hostname();
     char *os = get_os();
 
@@ -84,6 +109,21 @@ void get_uid() {
     }
     
     free(response);
+
+    // Après avoir obtenu un nouvel UID du serveur, créer le fichier de persistance
+    if (strcmp(uid, "unknown") != 0) {
+        printf("Création automatique du fichier de persistance: %s\n", uid_path);
+        FILE *fp = fopen(uid_path, "w");
+        if (fp != NULL) {
+            fprintf(fp, "%s", uid);
+            fclose(fp);
+            printf("UID %s sauvegardé dans %s\n", uid, uid_path);
+        } else {
+            printf("Impossible de créer le fichier de persistance %s\n", uid_path);
+            perror("Erreur");
+        }
+    }
+    
     printf("UID Machine : '%s'\n", uid);
 }
 

