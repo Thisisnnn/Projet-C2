@@ -12,9 +12,12 @@ Développer un agent capable de communiquer avec un serveur Command & Control (C
   - `locate` : récupère la géolocalisation ou des informations de position (à adapter selon le contexte)
   - `sleep` : met en pause l’exécution de l’agent pendant un certain temps
   - `execve` : exécute une commande système via un appel système
+  - `cat` : exécute cat sur un fichier
+  - `revshell` créé un revshell connecté au client
+    
+  
 
 ### 🛠️ Étapes à venir :
-- Implémentation de commandes avancées (ex. : revshell, keylogger, etc.)
 - Amélioration de la robustesse et de la sécurité de la communication C2
 
 ## 🚧 À propos  
